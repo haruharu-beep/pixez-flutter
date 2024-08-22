@@ -11,7 +11,9 @@ jobs:
         with:
           channel: 'stable'
       - run: flutter --version
+      - run: flutter clean
       - run: flutter pub get
+      - run: flutter pub upgrade
       - run: flutter packages pub run build_runner build --delete-conflicting-outputs
       - run: flutter build ios --release --no-codesign
       - name: Create Payload directory and move Runner.app
