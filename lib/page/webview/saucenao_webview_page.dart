@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:image/image.dart';
@@ -11,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/network/api_client.dart';
 
 class SauncenaoWebview extends StatefulWidget {
   final String? path;
@@ -88,18 +88,13 @@ class _SauncenaoWebviewState extends State<SauncenaoWebview> {
                             if (request.url.path == "/search.php") {
                               String host = "saucenao.com";
                               Dio dio = Dio(BaseOptions(
-                                  baseUrl: "https://45.32.0.237",
+                                  baseUrl: "https://saucenao.com",
                                   headers: {HttpHeaders.hostHeader: host}));
                               if (userSetting.disableBypassSni) {
                                 dio.options.baseUrl = "https://$host";
                               } else {
-                                dio.httpClientAdapter = IOHttpClientAdapter()
-                                  ..createHttpClient = () {
-                                    final httpclient = HttpClient();
-                                    httpclient.badCertificateCallback =
-                                        (cert, host, port) => true;
-                                    return httpclient;
-                                  };
+                                dio.httpClientAdapter =
+                                    await ApiClient.createCompatibleClient();
                               }
                               if (compressedPath == null) {
                                 final tmpPath =

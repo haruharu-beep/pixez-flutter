@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,7 +13,6 @@ import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/document_plugin.dart';
 import 'package:pixez/er/hoster.dart';
-import 'package:pixez/exts.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
@@ -195,7 +193,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
                     if (_tabIndex == 2) _scrollController.position.jumpTo(0);
                   },
                   child: Tab(
-                    text: I18n.of(context).detail,
+                    text: I18n.of(context).user_page_info_title,
                   ),
                 ),
               ],
@@ -254,7 +252,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
 
   _saveUserBg(String url) async {
     try {
-      final result = await pixivCacheManager.downloadFile(url, authHeaders: {
+      final result = await pixivCacheManager!.downloadFile(url, authHeaders: {
         'referer': 'https://app-api.pixiv.net/',
       });
       final bytes = await result.file.readAsBytes();
@@ -283,13 +281,9 @@ class _NovelUsersPageState extends State<NovelUsersPage>
       String tempFile = (await getTemporaryDirectory()).path + "/$fileName";
       final dio = Dio(BaseOptions(headers: Hoster.header(url: url)));
       if (!userSetting.disableBypassSni) {
-        dio.httpClientAdapter = IOHttpClientAdapter()
-        ..createHttpClient = () {
-          return HttpClient()
-            ..badCertificateCallback =
-                (X509Certificate cert, String host, int port) => true;};
+        dio.httpClientAdapter = await ApiClient.createCompatibleClient();
       }
-      await dio.download(url.toTrueUrl(), tempFile, deleteOnError: true);
+      await dio.download(url, tempFile, deleteOnError: true);
       File file = File(tempFile);
       if (file.existsSync()) {
         await saveStore.saveToGallery(
@@ -306,7 +300,8 @@ class _NovelUsersPageState extends State<NovelUsersPage>
               metaPages: [],
               type: '',
               width: 0,
-              series: Object(),
+              totalComments: 0,
+              series: null,
               totalBookmarks: 0,
               visible: false,
               isMuted: false,
@@ -389,15 +384,18 @@ class _NovelUsersPageState extends State<NovelUsersPage>
                       widget.id.toString(), userStore.userDetail!.user.name));
               break;
             }
+          case 4:
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (BuildContext context) {
+              return UsersPage(
+                id: widget.id,
+              );
+            }));
           default:
         }
       },
       itemBuilder: (context) {
         return [
-          PopupMenuItem<int>(
-            value: 0,
-            child: Text(I18n.of(context).quietly_follow),
-          ),
           PopupMenuItem<int>(
             value: 1,
             child: Text(I18n.of(context).block_user),
@@ -409,6 +407,10 @@ class _NovelUsersPageState extends State<NovelUsersPage>
           PopupMenuItem<int>(
             value: 3,
             child: Text(I18n.of(context).report),
+          ),
+          PopupMenuItem<int>(
+            value: 4,
+            child: Text(I18n.of(context).illust_page),
           ),
         ];
       },

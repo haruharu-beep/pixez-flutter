@@ -20,6 +20,7 @@ import 'package:dio/dio.dart';
 import 'package:mobx/mobx.dart';
 import 'package:pixez/models/error_message.dart';
 import 'package:pixez/models/illust.dart';
+import 'package:pixez/models/illust_series_detail.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/history/history_store.dart';
 
@@ -42,6 +43,8 @@ abstract class _IllustStoreBase with Store {
   bool captionFetchError = false;
   @observable
   bool captionFetching = false;
+  @observable
+  IllustSeriesDetailResponse? illustSeriesDetailResponse;
 
   void dispose() {}
 
@@ -94,6 +97,15 @@ abstract class _IllustStoreBase with Store {
         History.insertIllust(illusts!);
       } catch (e) {}
     }
+    if (illusts?.series != null && illustSeriesDetailResponse == null) {
+      try {
+        Response response = await client.illustSeriesIllust(id);
+        final result = IllustSeriesDetailResponse.fromJson(response.data);
+        illustSeriesDetailResponse = result;
+      } catch (e) {
+        print(e);
+      }
+    }
   }
 
   @action
@@ -115,8 +127,7 @@ abstract class _IllustStoreBase with Store {
     state = 1;
     if (force || !illusts!.isBookmarked) {
       try {
-        await ApiClient(isBookmark: true)
-            .postLikeIllust(illusts!.id, restrict, tags);
+        await apiClient.postLikeIllust(illusts!.id, restrict, tags);
         illusts!.isBookmarked = true;
         isBookmark = true;
         state = 2;
@@ -124,7 +135,7 @@ abstract class _IllustStoreBase with Store {
       } catch (e) {}
     } else {
       try {
-        await ApiClient(isBookmark: true).postUnLikeIllust(illusts!.id);
+        await apiClient.postUnLikeIllust(illusts!.id);
         illusts!.isBookmarked = false;
         isBookmark = false;
         state = 0;

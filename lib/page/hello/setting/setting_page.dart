@@ -16,29 +16,28 @@
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pixez/component/new_version_chip.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/er/leader.dart';
-import 'package:pixez/er/lprinter.dart';
 import 'package:pixez/er/updater.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/models/account.dart';
+import 'package:pixez/models/board_info.dart';
 import 'package:pixez/models/glance_illust_persist.dart';
 import 'package:pixez/page/about/about_page.dart';
 import 'package:pixez/page/account/edit/account_edit_page.dart';
 import 'package:pixez/page/account/select/account_select_page.dart';
+import 'package:pixez/page/board/board_page.dart';
 import 'package:pixez/page/book/tag/book_tag_page.dart';
 import 'package:pixez/page/hello/recom/recom_manga_page.dart';
 import 'package:pixez/page/hello/setting/data_export_page.dart';
 import 'package:pixez/page/hello/setting/setting_quality_page.dart';
 import 'package:pixez/page/history/history_page.dart';
 import 'package:pixez/page/login/login_page.dart';
-import 'package:pixez/page/network/network_setting_page.dart';
 import 'package:pixez/page/novel/history/novel_history_page.dart';
 import 'package:pixez/page/novel/novel_rail.dart';
 import 'package:pixez/page/shield/shield_page.dart';
@@ -57,9 +56,11 @@ class _SettingPageState extends State<SettingPage> {
   void initState() {
     super.initState();
     initMethod();
+    fetchBoard();
   }
 
   bool hasNewVersion = false;
+  bool hideEmail = true;
 
   initMethod() async {
     if (Constants.isGooglePlay || Platform.isIOS) return;
@@ -105,12 +106,6 @@ class _SettingPageState extends State<SettingPage> {
                   forceMaterialTransparency: true,
                   backgroundColor: Colors.transparent,
                   actions: [
-                    if (kDebugMode)
-                      IconButton(
-                          icon: Icon(Icons.code),
-                          onPressed: () {
-                            _showSavedLogDialog(context);
-                          }),
                     IconButton(
                       icon: Icon(
                         Icons.palette,
@@ -161,12 +156,47 @@ class _SettingPageState extends State<SettingPage> {
                                                   .textTheme
                                                   .titleMedium),
                                         ),
-                                        Text(
-                                          accountStore.now!.mailAddress,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
-                                        )
+                                        if (accountStore
+                                            .now!.mailAddress.isNotEmpty)
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                hideEmail
+                                                    ? accountStore.now!
+                                                        .hiddenEmail()
+                                                    : accountStore
+                                                        .now!.mailAddress,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall,
+                                              ),
+                                              SizedBox(
+                                                width: 6,
+                                              ),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    hideEmail = !hideEmail;
+                                                  });
+                                                },
+                                                child: Text(
+                                                    hideEmail
+                                                        ? I18n.of(context)
+                                                            .reveal
+                                                        : I18n.of(context).hide,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall!
+                                                        .copyWith(
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .colorScheme
+                                                                .primary)),
+                                              )
+                                            ],
+                                          )
                                       ],
                                     ),
                                   )
@@ -241,23 +271,16 @@ class _SettingPageState extends State<SettingPage> {
                   children: <Widget>[
                     ListTile(
                       leading: Icon(Icons.library_books),
-                      title: Text('Manga'),
+                      title: Text(I18n.of(context).manga),
                       onTap: () => Leader.push(context, RecomMangaPage()),
                     ),
                     ListTile(
                       leading: Icon(Icons.book),
-                      title: Text('Novel'),
+                      title: Text(I18n.of(context).novel),
                       onTap: () => Navigator.of(context, rootNavigator: true)
                           .pushReplacement(MaterialPageRoute(
                               builder: (context) => NovelRail())),
                     ),
-                    if (kDebugMode)
-                      ListTile(
-                        title: Text("网络诊断"),
-                        onTap: () {
-                          Leader.push(context, NetworkSettingPage());
-                        },
-                      ),
                     ListTile(
                       leading: Icon(Icons.message),
                       title: Text(I18n.of(context).about),
@@ -268,6 +291,16 @@ class _SettingPageState extends State<SettingPage> {
                         visible: hasNewVersion,
                       ),
                     ),
+                    if (_needBoardSection)
+                      ListTile(
+                        leading: Icon(Icons.article),
+                        title: Text(I18n.of(context).bulletin_board),
+                        onTap: () => Leader.push(
+                            context,
+                            BoardPage(
+                              boardList: _boardList,
+                            )),
+                      ),
                     Observer(builder: (context) {
                       if (accountStore.now != null)
                         return ListTile(
@@ -290,44 +323,6 @@ class _SettingPageState extends State<SettingPage> {
         ),
       ),
     );
-  }
-
-  Future _showSavedLogDialog(BuildContext context) async {
-    var savedLogFile = await LPrinter.savedLogFile();
-    var content = savedLogFile.readAsStringSync();
-    final result = await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("Log"),
-            content: Container(
-              child: Text(content),
-              height: 400,
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text(I18n.of(context).cancel),
-                onPressed: () {
-                  Navigator.of(context).pop("CANCEL");
-                },
-              ),
-              TextButton(
-                child: Text(I18n.of(context).ok),
-                onPressed: () {
-                  Navigator.of(context).pop("OK");
-                },
-              ),
-            ],
-          );
-        });
-    switch (result) {
-      case "OK":
-        {}
-        break;
-      case "CANCEL":
-        {}
-        break;
-    }
   }
 
   Future _showLogoutDialog(BuildContext context) async {
@@ -364,46 +359,32 @@ class _SettingPageState extends State<SettingPage> {
     }
   }
 
-  Future _showClearCacheDialog(BuildContext context) async {
-    final result = await showDialog(
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(I18n.of(context).clear_all_cache),
-            actions: <Widget>[
-              TextButton(
-                child: Text(I18n.of(context).cancel),
-                onPressed: () {
-                  Navigator.of(context).pop("CANCEL");
-                },
-              ),
-              TextButton(
-                child: Text(I18n.of(context).ok),
-                onPressed: () {
-                  Navigator.of(context).pop("OK");
-                },
-              ),
-            ],
-          );
-        },
-        context: context);
-    switch (result) {
-      case "OK":
-        {
-          try {
-            Directory tempDir = await getTemporaryDirectory();
-            tempDir.deleteSync(recursive: true);
-            cleanGlanceData();
-          } catch (e) {}
-        }
-        break;
-    }
-  }
-
   void cleanGlanceData() async {
     GlanceIllustPersistProvider glanceIllustPersistProvider =
         GlanceIllustPersistProvider();
     await glanceIllustPersistProvider.open();
     await glanceIllustPersistProvider.deleteAll();
     await glanceIllustPersistProvider.close();
+  }
+
+  bool _needBoardSection = false;
+  List<BoardInfo> _boardList = [];
+
+  fetchBoard() async {
+    try {
+      if (BoardInfo.boardDataLoaded) {
+        setState(() {
+          _boardList = BoardInfo.boardList;
+          _needBoardSection = _boardList.isNotEmpty;
+        });
+        return;
+      }
+      final list = await BoardInfo.load();
+      setState(() {
+        BoardInfo.boardDataLoaded = true;
+        _boardList = list;
+        _needBoardSection = _boardList.isNotEmpty;
+      });
+    } catch (e) {}
   }
 }

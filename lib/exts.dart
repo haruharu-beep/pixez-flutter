@@ -15,6 +15,7 @@
 import 'package:intl/intl.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/models/ban_tag.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:pixez/models/novel_recom_response.dart';
 
@@ -25,6 +26,11 @@ extension HostExts on Uri {
     } else {
       if (userSetting.pictureSource != ImageHost) {
         try {
+          if (userSetting.pictureSource!.contains('/')) {
+            final preHost = this.host;
+            return Uri.parse(
+                '${this.toString().replaceAll(preHost, userSetting.pictureSource!)}');
+          }
           return this.replace(host: userSetting.pictureSource);
         } catch (e) {}
       }
@@ -58,26 +64,31 @@ extension TimeExts on String {
         .replaceAll("</p>", "");
   }
 
-  String toTrueUrl() {
-    if (userSetting.disableBypassSni || this.contains("novel")) {
-      return this;
-    } else {
-      if (userSetting.pictureSource != ImageHost) {
-        try {
-          return Uri.parse(this)
-              .replace(host: userSetting.pictureSource)
-              .toString();
-        } catch (e) {}
-      }
-      if (this.contains(ImageHost)) {
-        return this.replaceFirst(ImageHost, splashStore.host);
-      }
-      if (this.contains(ImageSHost)) {
-        return this.replaceFirst(ImageSHost, splashStore.host);
-      }
-    }
-    return this;
-  }
+  // String toTrueUrl() {
+  //   if (userSetting.disableBypassSni || this.contains("novel")) {
+  //     return this;
+  //   } else {
+  //     if (userSetting.pictureSource != ImageHost) {
+  //       try {
+  //         if (userSetting.pictureSource!.contains('/')) {
+  //           Uri preUri = Uri.parse(this);
+  //           final preHost = preUri.host;
+  //           return this.replaceAll(preHost, userSetting.pictureSource!);
+  //         }
+  //         return Uri.parse(this)
+  //             .replace(host: userSetting.pictureSource)
+  //             .toString();
+  //       } catch (e) {}
+  //     }
+  //     if (this.contains(ImageHost)) {
+  //       return this.replaceFirst(ImageHost, splashStore.host);
+  //     }
+  //     if (this.contains(ImageSHost)) {
+  //       return this.replaceFirst(ImageSHost, splashStore.host);
+  //     }
+  //   }
+  //   return this;
+  // }
 
   String toLegal() {
     return this
@@ -96,7 +107,13 @@ extension NovelExts on Novel {
   bool hateByUser() {
     for (var t in muteStore.banTags) {
       for (var f in this.tags) {
-        if (f.name == t.name) return true;
+        if (t.isRegexMatch(f.name)) {
+          return true;
+        }
+      }
+      final allText = tags.map((e) => '#${e.name}').join('');
+      if (t.isRegexMatch(allText)) {
+        return true;
       }
     }
     for (var j in muteStore.banUserIds) {
@@ -125,8 +142,8 @@ extension IllustExts on Illusts {
   bool hateByUser({bool ai = false, bool includeR18Setting = false}) {
     if (includeR18Setting) {
       if (userSetting.hIsNotAllow) {
-        for (int i = 0; i < tags.length; i++) {
-          if (tags[i].name.startsWith('R-18')) return true;
+        for (final tag in tags) {
+          if (tag.name.startsWith('R-18')) return true;
         }
       }
     }
@@ -135,7 +152,13 @@ extension IllustExts on Illusts {
     }
     for (var t in muteStore.banTags) {
       for (var f in this.tags) {
-        if (f.name == t.name) return true;
+        if (t.isRegexMatch(f.name)) {
+          return true;
+        }
+      }
+      final allText = tags.map((e) => '#${e.name}').join('');
+      if (t.isRegexMatch(allText)) {
+        return true;
       }
     }
     for (var j in muteStore.banUserIds) {

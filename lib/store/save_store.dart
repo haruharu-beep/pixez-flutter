@@ -177,7 +177,6 @@ abstract class _SaveStoreBase with Store {
                   ),
                 ));
         break;
-      default:
     }
   }
 
@@ -234,7 +233,7 @@ abstract class _SaveStoreBase with Store {
       } catch (e) {}
     }
     streamController.add(SaveStream(SaveState.JOIN, illusts, index: index));
-    File? file = (await pixivCacheManager.getFileFromCache(url))?.file;
+    File? file = (await pixivCacheManager!.getFileFromCache(url))?.file;
     if (file == null) {
       _joinQueue(url, illusts, fileName);
     } else {
@@ -363,7 +362,7 @@ abstract class _SaveStoreBase with Store {
       //IOS APP STORE REVIEW
       final status = await DocumentPlugin.permissionStatus() ?? false;
       if (!status) {
-        final auth = await DocumentPlugin.requestPermission();
+        await DocumentPlugin.requestPermission();
       }
     }
     String memType;

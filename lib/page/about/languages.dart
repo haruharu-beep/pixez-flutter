@@ -122,4 +122,22 @@ const Languages = const [
       ),
     ],
   ),
+  Language(language: 'id', locale: Locale('id', 'ID'), sponsors: [
+    Sponsor(
+        name: 'ReikiAigawara',
+        avatar: 'https://avatars.githubusercontent.com/u/66962815?v=4',
+        uri: 'https://github.com/ReikiAigawara')
+  ],
+  ),
+  Language(
+    language: 'fil',
+    locale: Locale('fil'),
+    sponsors: [
+      Sponsor(
+        name: 'searingmoonlight',
+        avatar: 'https://avatars.githubusercontent.com/u/114207889?v=4',
+        uri: 'https://github.com/searinminecraft',
+      ),
+    ],
+  ),
 ];

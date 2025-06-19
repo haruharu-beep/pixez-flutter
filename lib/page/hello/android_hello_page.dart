@@ -28,6 +28,7 @@ import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/deep_link_plugin.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/Init/guide_page.dart';
@@ -41,7 +42,6 @@ import 'package:pixez/page/search/search_page.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AndroidHelloPage extends StatefulWidget {
   const AndroidHelloPage({Key? key}) : super(key: key);
@@ -83,7 +83,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth > constraints.maxHeight;
       return PopScope(
-          onPopInvoked: (didPop) async {
+          onPopInvokedWithResult: (didPop, result) async {
             userSetting.setAnimContainer(!userSetting.animContainer);
             if (didPop) return;
             if (!userSetting.isReturnAgainToExit) {
@@ -111,14 +111,18 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
             extendBody: true,
             bottomNavigationBar: wide
                 ? null
-                : AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    transform: Matrix4.translationValues(
-                        0,
-                        fullScreenStore.fullscreen ? bottomNavigatorHeight! : 0,
-                        0),
-                    child: _buildNavigationBar(context),
-                  ),
+                : Observer(builder: (context) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      transform: Matrix4.translationValues(
+                          0,
+                          fullScreenStore.fullscreen
+                              ? bottomNavigatorHeight!
+                              : 0,
+                          0),
+                      child: _buildNavigationBar(context),
+                    );
+                  }),
           ));
     });
   }
@@ -130,9 +134,11 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         Positioned(
           bottom: MediaQuery.of(context).padding.bottom + 16,
           right: 16,
-          child: AnimatedToggleFullscreenFAB(
-              isFullscreen: fullScreenStore.fullscreen,
-              toggleFullscreen: toggleFullscreen),
+          child: Observer(builder: (context) {
+            return AnimatedToggleFullscreenFAB(
+                isFullscreen: fullScreenStore.fullscreen,
+                toggleFullscreen: toggleFullscreen);
+          }),
         )
       ],
     );
@@ -145,7 +151,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         child: NavigationBar(
           height: 68,
           backgroundColor:
-              Theme.of(context).colorScheme.surface.withOpacity(0.9),
+              Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
           destinations: [
             NavigationDestination(
                 icon: Icon(Icons.home), label: I18n.of(context).home),
@@ -226,25 +232,29 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
             left: 0.0,
             right: 0.0,
             bottom: 0.0,
-            child: Padding(
+            child: Container(
               padding: EdgeInsets.only(
+                  left: MediaQuery.of(context).padding.left,
                   bottom: MediaQuery.of(context).padding.bottom + 4.0),
               child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
+                alignment: Alignment.center,
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
-                ),
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: accountStore.now != null
-                      ? PainterAvatar(
-                          url: accountStore.now!.userImage,
-                          id: int.tryParse(accountStore.now!.userId) ?? 0)
-                      : Container(),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: accountStore.now != null
+                        ? PainterAvatar(
+                            url: accountStore.now!.userImage,
+                            id: int.tryParse(accountStore.now!.userId) ?? 0)
+                        : Container(),
+                  ),
                 ),
               ),
             ),
@@ -412,7 +422,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     }
   }
 
-  initPermission() async {
+  initPermission(BuildContext context) async {
     try {
       if (Platform.isAndroid && userSetting.saveMode != 1) {
         final info = await DeviceInfoPlugin().androidInfo;
@@ -423,7 +433,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         if (!granted.isGranted) {
           var b = await permission.request();
           if (!b.isGranted) {
-            _showPermissionDenied();
+            _showPermissionDenied(context);
             return;
           }
         }
@@ -431,15 +441,14 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     } catch (e) {}
   }
 
-  _showPermissionDenied() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool("permission_denied") == true) return;
+  _showPermissionDenied(BuildContext context) async {
+    if (Prefer.getBool("storage_permission_denied") == true) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text("storage permission denied"),
+      content: Text(I18n.of(context).storage_permission_denied),
       action: SnackBarAction(
-        label: "Don't show again",
+        label: I18n.of(context).dont_show_again,
         onPressed: () {
-          prefs.setBool("storaget_denied_confirm", true);
+          Prefer.setBool("storage_permission_denied", true);
         },
       ),
     ));
@@ -454,15 +463,14 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
   }
 
   initPlatformState() async {
-    var prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('guide_enable') == null) {
+    if (Prefer.getBool('guide_enable') == null) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => GuidePage()),
         (route) => false,
       );
       return;
     }
-    initPermission();
+    initPermission(context);
   }
 }
 
@@ -499,12 +507,19 @@ class _AnimatedToggleFullscreenFABState
   );
 
   @override
-  Widget build(BuildContext context) {
-    if (widget.isFullscreen) {
-      _controller.forward();
-    } else {
-      _controller.reverse();
+  void didUpdateWidget(covariant AnimatedToggleFullscreenFAB oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isFullscreen != widget.isFullscreen) {
+      if (widget.isFullscreen) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Visibility(
       visible: widget.isFullscreen,
       child: SlideTransition(

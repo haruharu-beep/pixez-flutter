@@ -16,12 +16,14 @@
 
 import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/deep_link_plugin.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/Init/guide_page.dart';
@@ -31,7 +33,6 @@ import 'package:pixez/page/hello/recom/recom_spotlight_page.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/preview/preview_page.dart';
 import 'package:pixez/page/search/search_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HelloPage extends StatefulWidget {
   @override
@@ -90,8 +91,7 @@ class _HelloPageState extends State<HelloPage> {
   }
 
   Future<void> initPlatformState() async {
-    var prefs = await SharedPreferences.getInstance();
-    if (prefs.getInt('language_num') == null) {
+    if (Prefer.getInt('language_num') == null) {
       Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => GuidePage()));
     }
@@ -177,6 +177,7 @@ class _HelloPageState extends State<HelloPage> {
             bottom: 0.0,
             child: Padding(
               padding: EdgeInsets.only(
+                  left: MediaQuery.of(context).padding.left,
                   bottom: MediaQuery.of(context).padding.bottom + 4.0),
               child: Container(
                 decoration: BoxDecoration(
@@ -211,7 +212,7 @@ class _HelloPageState extends State<HelloPage> {
         child: NavigationBar(
           height: 68,
           backgroundColor:
-              Theme.of(context).colorScheme.surface.withOpacity(0.9),
+              Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
           destinations: [
             NavigationDestination(
                 icon: Icon(Icons.home), label: I18n.of(context).home),

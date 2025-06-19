@@ -29,8 +29,12 @@ class ClipboardPlugin {
   static Future<void> showToast(BuildContext context, Future future) async {
     // TODO: 这里的本地化提示需要修改
     BotToast.showText(text: I18n.of(context).copy);
-    await future;
-    BotToast.showText(text: I18n.of(context).copied_to_clipboard);
+    try {
+      await future;
+      BotToast.showText(text: I18n.of(context).copied_to_clipboard);
+    } catch (e) {
+      BotToast.showText(text: e.toString());
+    }
   }
 
   /// 从图片链接中加载图片并复制到剪贴板
@@ -41,8 +45,8 @@ class ClipboardPlugin {
 
   /// 下载或从缓存中加载图片
   static Future<File> _getImagePathFromUrl(String url) async {
-    final image = await pixivCacheManager.getFileFromCache(url) ??
-        await pixivCacheManager.downloadFile(url);
+    final image = await pixivCacheManager!.getFileFromCache(url) ??
+        await pixivCacheManager!.downloadFile(url);
 
     return image.file;
   }

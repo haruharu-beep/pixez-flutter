@@ -71,7 +71,7 @@ class _SearchPageState extends State<SearchPage>
                       .toList(),
                 )));
       } else {
-        BotToast.showText(text: "0 result");
+        BotToast.showText(text: I18n.ofContext().no_result);
       }
     });
     super.initState();
@@ -232,6 +232,7 @@ class _SearchPageState extends State<SearchPage>
                                       ? Icons.expand_more
                                       : Icons.expand_less),
                                 ),
+                                padding: EdgeInsets.all(0.0),
                                 onPressed: () {
                                   setState(() {
                                     _tagExpand = !_tagExpand;
@@ -270,7 +271,7 @@ class _SearchPageState extends State<SearchPage>
                         context: context,
                         builder: (context) {
                           return AlertDialog(
-                            title: Text("Clean history?"),
+                            title: Text(I18n.of(context).clean_history),
                             actions: [
                               TextButton(
                                   onPressed: () {
